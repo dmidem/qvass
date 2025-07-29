@@ -115,10 +115,9 @@ jobs:
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
-      with:
-        toolchain: stable
-        target: thumbv7m-none-eabi # A common bare-metal target
-        override: true
+
+    - name: Install embedded target
+      run: rustup target add thumbv7m-none-eabi
 
     - name: Run cargo check for no_std target
       run: cargo check --target thumbv7m-none-eabi
