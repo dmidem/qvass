@@ -1,0 +1,50 @@
+<svg width="280" height="100" viewBox="0 0 280 100" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision">
+  <g id="icon">
+    <!-- Neutral dark ring -->
+    <circle cx="50" cy="50" r="45" fill="none" stroke="#4A5568" stroke-width="9"/>
+
+    <!-- Bubbles -->
+    <g fill="#d1c7bc" stroke="#A0AEC0" stroke-width="1.2">
+      <circle cx="30" cy="75" r="3" opacity="0.4"/>
+      <circle cx="45" cy="72" r="5" opacity="0.6"/>
+      <circle cx="36" cy="52" r="14" opacity="0.7"/>
+      <circle cx="67" cy="46" r="12" opacity="0.7"/>
+      <circle cx="50" cy="20" r="4" opacity="0.5"/>
+      <circle cx="70" cy="30" r="5" opacity="0.6"/>
+    </g>
+
+    <!-- Quantum kets -->
+    <g font-family="monospace" text-anchor="middle" font-weight="bold" stroke="#2D3748" stroke-width="0.3">
+      <text x="36" y="56" font-size="15" fill="#2D3748">|0⟩</text>
+      <text x="67" y="50" font-size="13" fill="#2D3748">|1⟩</text>
+    </g>
+
+    <!-- Accent line -->
+    <line x1="82" y1="82" x2="95" y2="95" stroke="#4A5568" stroke-width="7"/>
+  </g>
+
+  <!-- Text -->
+  <g id="text">
+    <text x="185" y="38" text-anchor="middle"
+      font-family="Courier New, monospace"
+      font-size="36"
+      font-weight="bold"
+      fill="#2D3748"
+      letter-spacing="1">
+      Qvass
+    </text>
+    <text x="185" y="66" text-anchor="middle"
+      font-family="Verdana, sans-serif"
+      font-size="16"
+      fill="#4A5568">
+      Quantum Simulation
+    </text>
+    <text x="185" y="84" text-anchor="middle"
+      font-family="Verdana, sans-serif"
+      font-size="16"
+      fill="#4A5568">
+      Sandbox
+    </text>
+  </g>
+</svg>
+

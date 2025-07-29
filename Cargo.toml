@@ -1,0 +1,18 @@
+[package]
+name = "qvass"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.59.0"
+description = "A quantum circuit simulator in Rust."
+authors = ["Dmitry Demin <dmitry.demin@outlook.com>"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["quantum", "simulator", "qubit", "qiskit"]
+repository = "https://github.com/dmidem/qvass"
+
+[dependencies]
+num-complex = { version = "0.4.6", default-features = false, features = ["libm"] }
+rand = { version = "0.8.5", default-features = false }
+
+[dev-dependencies]
+rand = { version = "0.8.5", default-features = false, features = ["small_rng"] }
