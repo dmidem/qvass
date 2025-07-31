@@ -48,7 +48,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.use_stable && 'stable' || '' }}
-          override: ${{ matrix.use_stable }}
           components: rustfmt, clippy
 
       - name: Cache dependencies
