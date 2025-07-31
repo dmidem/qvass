@@ -66,6 +66,7 @@ jobs:
 
       - name: Remove lockfile if testing unlocked
         if: matrix.name == 'Unlocked'
+        shell: bash
         run: rm -f Cargo.lock
 
       - name: Check formatting
