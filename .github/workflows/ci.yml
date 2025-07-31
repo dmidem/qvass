@@ -18,16 +18,16 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         config:
           - name: Locked
-            toolchain: null
+            use_stable: false
             cargo_flags: '--locked'
           - name: Unlocked
-            toolchain: null
+            use_stable: false
             cargo_flags: ''
           - name: Stable Locked
-            toolchain: 'stable'
+            use_stable: true
             cargo_flags: '--locked'
           - name: Stable Unlocked
-            toolchain: 'stable'
+            use_stable: true
             cargo_flags: ''
 
     runs-on: ${{ matrix.os }}
@@ -47,6 +47,20 @@ jobs:
         run: |
           python scripts/make_rust_vectors.py
           git diff --exit-code
+
+
+      - name: Install Rust toolchain
+        if: matrix.config.use_stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 'stable'
+          components: rustfmt, clippy
+
+      - name: Install Rust toolchain
+        if: !matrix.config.use_stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
