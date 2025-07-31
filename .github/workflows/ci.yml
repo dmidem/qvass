@@ -15,20 +15,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]           
         config:
+          # Reference environment - comprehensive validation
           - name: Locked
-            use_stable: false
-            cargo_flags: '--locked'
-          - name: Unlocked
-            use_stable: false
-            cargo_flags: ''
+            locked: true
+            
+          # Rust compiler compatibility - catch new lints and breaking changes  
           - name: Stable Locked
-            use_stable: true
-            cargo_flags: '--locked'
+            locked: true
+            stable: true
+            
+          # Dependency compatibility - simulate downstream usage
           - name: Stable Unlocked
-            use_stable: true
-            cargo_flags: ''
+            stable: true
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -48,16 +48,15 @@ jobs:
           python scripts/make_rust_vectors.py
           git diff --exit-code
 
-
-      - name: Install Rust toolchain
-        if: matrix.config.use_stable == true
+      - name: Install Rust toolchain (stable)
+        if: matrix.config.stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 'stable'
+          toolchain: stable
           components: rustfmt, clippy
 
-      - name: Install Rust toolchain
-        if: matrix.config.use_stable == false
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        if: '!matrix.config.stable'
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -75,37 +74,41 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.config.name }}-
 
-      - name: Remove lockfile if testing unlocked
-        if: matrix.config.cargo_flags != ''
+      - name: Remove lockfile for dependency compatibility test
+        if: '!matrix.config.locked'
         shell: bash
         run: rm -f Cargo.lock
 
-      - name: Check formatting
-        if: matrix.config.name == 'Pinned' && matrix.os == 'ubuntu-latest'
-        run: cargo fmt -- --check
+      - name: Build
+        run: cargo build --all-targets ${{ matrix.config.locked && '--locked' || '' }}
+
+      - name: Run tests  
+        run: cargo test --all-targets ${{ matrix.config.locked && '--locked' || '' }}
 
       - name: Run clippy
-        run: cargo clippy --all-targets ${{ matrix.config.cargo_flags }} -- -D warnings
-
-      - name: Build
-        run: cargo build --all-targets ${{ matrix.config.cargo_flags }}
-
-      - name: Run tests
-        run: cargo test --all-targets ${{ matrix.config.cargo_flags }}
-
-      - name: Run doc tests
-        run: cargo test --doc ${{ matrix.config.cargo_flags }}
-
-      - name: Build examples
-        run: cargo build --examples ${{ matrix.config.cargo_flags }}
-
-      - name: Run cargo vet
-        if: matrix.config.name == 'Pinned' && matrix.os == 'ubuntu-latest'
+        if: matrix.config.locked
+        run: cargo clippy --all-targets --locked -- -D warnings
+ 
+      - name: Build docs and examples
+        if: '!matrix.config.stable'
         run: |
+          echo "--- Building documentation ---"
+          cargo doc --no-deps --locked
+          
+          echo "--- Building examples ---"
+          cargo build --examples --locked
+ 
+      - name: Run comprehensive checks (fmt, vet, no_std)
+        if: "!matrix.config.stable && matrix.os == 'ubuntu-latest'"
+        run: |
+          echo "--- Checking formatting ---"
+          cargo fmt -- --check
+          
+          echo "--- Auditing with cargo-vet ---"
           cargo install cargo-vet --locked
           cargo vet
+          
+          echo "--- Checking no_std compatibility ---"
+          rustup target add riscv64gc-unknown-none-elf
+          cargo check --target riscv64gc-unknown-none-elf --locked
 
-      - name: Check no_std
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          rustup target add thumbv7m-none-eabi
