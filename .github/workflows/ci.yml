@@ -11,11 +11,12 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify (${{ matrix.os }}, ${{ matrix.name }})
+    name: Verify (${{ matrix.os }}, ${{ matrix.config.name }})
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
+        config:
           - name: Pinned
             cargo_flags: '--locked'
             use_stable: false
@@ -47,7 +48,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.use_stable && 'stable' || '' }}
+          toolchain: ${{ matrix.config.use_stable && 'stable' || '' }}
           components: rustfmt, clippy
 
       - name: Cache dependencies
@@ -59,42 +60,41 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-${{ matrix.name }}-${{ hashFiles('**/rust-toolchain.toml', '**/Cargo.lock', '**/Cargo.toml') }}
+          key: ${{ runner.os }}-${{ matrix.config.name }}-${{ hashFiles('**/rust-toolchain.toml', '**/Cargo.lock', '**/Cargo.toml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.name }}-
+            ${{ runner.os }}-${{ matrix.config.name }}-
 
       - name: Remove lockfile if testing unlocked
-        if: matrix.name == 'Unlocked'
+        if: matrix.config.name == 'Unlocked'
         shell: bash
         run: rm -f Cargo.lock
 
       - name: Check formatting
-        if: matrix.name == 'Pinned' && runner.os == 'Linux'
+        if: matrix.config.name == 'Pinned' && matrix.os == 'ubuntu-latest'
         run: cargo fmt -- --check
 
       - name: Run clippy
-        run: cargo clippy --all-targets ${{ matrix.cargo_flags }} -- -D warnings
+        run: cargo clippy --all-targets ${{ matrix.config.cargo_flags }} -- -D warnings
 
       - name: Build
-        run: cargo build --all-targets ${{ matrix.cargo_flags }}
+        run: cargo build --all-targets ${{ matrix.config.cargo_flags }}
 
       - name: Run tests
-        run: cargo test --all-targets ${{ matrix.cargo_flags }}
+        run: cargo test --all-targets ${{ matrix.config.cargo_flags }}
 
       - name: Run doc tests
-        run: cargo test --doc ${{ matrix.cargo_flags }}
+        run: cargo test --doc ${{ matrix.config.cargo_flags }}
 
       - name: Build examples
-        run: cargo build --examples ${{ matrix.cargo_flags }}
+        run: cargo build --examples ${{ matrix.config.cargo_flags }}
 
       - name: Run cargo vet
-        if: matrix.name == 'Pinned' && runner.os == 'Linux'
+        if: matrix.config.name == 'Pinned' && matrix.os == 'ubuntu-latest'
         run: |
           cargo install cargo-vet --locked
           cargo vet
 
       - name: Check no_std
-        if: runner.os == 'Linux'
+        if: matrix.os == 'ubuntu-latest'
         run: |
           rustup target add thumbv7m-none-eabi
-          cargo check --target thumbv7m-none-eabi ${{ matrix.cargo_flags }}
