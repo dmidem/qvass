@@ -55,7 +55,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.config.use_stable && 'stable' || null }}
+          toolchain: ${{ if(matrix.config.use_stable, 'stable', null) }}
           components: rustfmt, clippy
 
       - name: Cache dependencies
