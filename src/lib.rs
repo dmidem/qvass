@@ -55,8 +55,6 @@ mod circuit;
 mod gate;
 mod simulator;
 
-pub mod classical;
-
 pub mod qft;
 
 pub use circuit::{Circuit, QubitError};
