@@ -105,7 +105,7 @@ jobs:
           cargo fmt -- --check
           
           echo "--- Auditing with cargo-vet ---"
-          cargo install cargo-vet --locked
+          command -v cargo-vet &>/dev/null || cargo install cargo-vet --locked
           cargo vet
           
           echo "--- Checking no_std compatibility ---"
