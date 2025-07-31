@@ -17,15 +17,22 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         config:
-          - name: Pinned
-            cargo_flags: '--locked'
+          - name: Locked
             use_stable: false
-          - name: Stable
+            is_locked: true
             cargo_flags: '--locked'
-            use_stable: true
           - name: Unlocked
+            use_stable: false
+            is_locked: false
             cargo_flags: ''
+          - name: Stable Locked
             use_stable: true
+            is_locked: true
+            cargo_flags: '--locked'
+          - name: Stable Unlocked
+            use_stable: true
+            is_locked: false
+            cargo_flags: ''
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -48,7 +55,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.config.use_stable && 'stable' || '' }}
+          toolchain: ${{ matrix.config.use_stable && 'stable' || null }}
           components: rustfmt, clippy
 
       - name: Cache dependencies
@@ -65,7 +72,7 @@ jobs:
             ${{ runner.os }}-${{ matrix.config.name }}-
 
       - name: Remove lockfile if testing unlocked
-        if: matrix.config.name == 'Unlocked'
+        if: matrix.config.is_locked == false
         shell: bash
         run: rm -f Cargo.lock
 
