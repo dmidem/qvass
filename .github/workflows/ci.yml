@@ -62,12 +62,6 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: ${{ matrix.config.toolchain }}
-          components: rustfmt, clippy
-
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
