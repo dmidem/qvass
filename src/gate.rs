@@ -125,7 +125,8 @@ impl Gate {
 
     /// Applies the gate's transformation to a local sub-state
     pub fn apply(&self, state: &mut [Complex64]) {
-        // TODO: Call validate_state_normalization?
+        // TODO: Call validate_state_normalization here?
+        // TODO: Return errors instead of debug_assert (see below)?
 
         match self {
             Self::Hadamard => {
@@ -191,7 +192,7 @@ pub(crate) mod tests {
         for (i, test_vector) in test_vectors.into_iter().enumerate() {
             println!("{title} circuit test case #{i}");
 
-            // FIXME: Avoid test_vector.qubits.iter().copied()?
+            // TODO: Avoid test_vector.qubits.iter().copied()?
             let circuit =
                 Circuit::from_gate(build_gate(test_vector), test_vector.qubits.iter().copied())
                     .unwrap();

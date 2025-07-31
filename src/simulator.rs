@@ -94,7 +94,6 @@ impl QuantumSimulator {
     /// The outcome is determined probabilistically based on the amplitudes of the state vector.
     /// After measurement, the system's state collapses to the measured basis state.
     pub fn measure<R: Rng>(&mut self, rng: &mut R) -> usize {
-        // TODO: Consider using a cryptographically secure RNG for less predictable measurements.
         let probe: f64 = rng.gen();
 
         // Find the outcome by iterating through cumulative probabilities
