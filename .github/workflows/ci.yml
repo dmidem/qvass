@@ -1,5 +1,4 @@
 name: CI
-
 on:
   push:
   pull_request:
@@ -9,36 +8,41 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+
 jobs:
   verify:
     name: Verify (${{ matrix.os }}, ${{ matrix.config.name }})
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]           
+        os: [ubuntu-latest, windows-latest, macos-latest]
         config:
           # Reference environment - comprehensive validation
           - name: Locked
             locked: true
-            
-          # Rust compiler compatibility - catch new lints and breaking changes  
+
+          # Rust compiler compatibility - catch new lints and breaking changes
           - name: Stable Locked
             locked: true
             stable: true
-            
+
           # Dependency compatibility - simulate downstream usage
           - name: Stable Unlocked
             stable: true
-
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
       - name: Install Python dependencies
         run: python -m pip install -r scripts/requirements.txt
@@ -61,7 +65,7 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Cache dependencies
+      - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -73,6 +77,18 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.config.name }}-${{ hashFiles('**/rust-toolchain.toml', '**/Cargo.lock', '**/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.config.name }}-
+            ${{ runner.os }}-
+          save-always: true
+
+      - name: Cache Rust toolchain and targets
+        if: "!matrix.config.stable && matrix.os == 'ubuntu-latest'"
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/cargo-vet
+            ~/.rustup/toolchains/*/lib/rustlib/riscv64gc-unknown-none-elf/
+          key: rust-tools-${{ runner.os }}-${{ hashFiles('**/rust-toolchain.toml') }}
+          restore-keys: rust-tools-${{ runner.os }}-
 
       - name: Remove lockfile for dependency compatibility test
         if: '!matrix.config.locked'
@@ -82,33 +98,40 @@ jobs:
       - name: Build
         run: cargo build --all-targets ${{ matrix.config.locked && '--locked' || '' }}
 
-      - name: Run tests  
+      - name: Run tests
         run: cargo test --all-targets ${{ matrix.config.locked && '--locked' || '' }}
 
       - name: Run clippy
         if: matrix.config.locked
         run: cargo clippy --all-targets --locked -- -D warnings
- 
+
       - name: Build docs and examples
         if: '!matrix.config.stable'
         run: |
           echo "--- Building documentation ---"
           cargo doc --no-deps --locked
-          
+
           echo "--- Building examples ---"
           cargo build --examples --locked
- 
+
       - name: Run comprehensive checks (fmt, vet, no_std)
         if: "!matrix.config.stable && matrix.os == 'ubuntu-latest'"
         run: |
           echo "--- Checking formatting ---"
           cargo fmt -- --check
-          
-          echo "--- Auditing with cargo-vet ---"
-          command -v cargo-vet &>/dev/null || cargo install cargo-vet --locked
-          cargo vet
-          
-          echo "--- Checking no_std compatibility ---"
-          rustup target add riscv64gc-unknown-none-elf
-          cargo check --target riscv64gc-unknown-none-elf --locked
 
+          echo "--- Installing cargo-vet if needed ---"
+          if ! command -v cargo-vet &>/dev/null; then
+            cargo install cargo-vet --locked
+          fi
+
+          echo "--- Auditing with cargo-vet ---"
+          cargo vet
+
+          echo "--- Installing riscv64gc target if needed ---"
+          if ! rustup target list --installed | grep -q riscv64gc-unknown-none-elf; then
+            rustup target add riscv64gc-unknown-none-elf
+          fi
+
+          echo "--- Checking no_std compatibility ---"
+          cargo check --target riscv64gc-unknown-none-elf --locked
