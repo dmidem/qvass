@@ -1,5 +1,3 @@
-# FIXME: add qubut indices to the test vectors
-
 import math
 import numpy as np
 

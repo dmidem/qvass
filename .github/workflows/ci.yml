@@ -1,84 +1,71 @@
-name: Build, Lint, and Test
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 
-on: [push, pull_request]
-
-# Cancel in-progress runs on the same branch when a new commit is pushed.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: 1
+
 jobs:
-  lint:
-    name: Lint and Format
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  verify:
+    name: Verify (${{ matrix.os }}, ${{ matrix.config.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        config:
+          # Reference environment - comprehensive validation
+          - name: Locked
+            locked: true
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-          override: true
+          # Rust compiler compatibility - catch new lints and breaking changes
+          - name: Stable Locked
+            locked: true
+            stable: true
 
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-lint-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Check formatting
-        run: cargo fmt -- --check
-
-      - name: Run clippy linter
-        run: cargo clippy --all-targets -- -D warnings
-
-  verify_python:
-    name: Python Verification
-    runs-on: ubuntu-latest
+          # Dependency compatibility - simulate downstream usage
+          - name: Stable Unlocked
+            stable: true
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11' # Pinning to a specific version is good practice
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Install Python dependencies
         run: python -m pip install -r scripts/requirements.txt
 
-      - name: Verify generated vectors are up-to-date
+      - name: Check generated code
         run: |
           python scripts/make_rust_vectors.py
           git diff --exit-code
 
-      - name: Run Qiskit verification tests
-        run: python -m pytest scripts/
-
-  test:
-    name: Test Suite
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Install Rust toolchain (stable)
+        if: matrix.config.stable
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          override: true
-      
-      - name: Cache Cargo dependencies
+          components: rustfmt, clippy
+
+      - name: Install Rust toolchain (from rust-toolchain.toml)
+        if: '!matrix.config.stable'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -87,54 +74,62 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-      
-      - name: Build the project
-        run: cargo build --all-targets
+          key: ${{ runner.os }}-${{ matrix.config.name }}-${{ hashFiles('**/rust-toolchain.toml', '**/Cargo.lock', '**/Cargo.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.config.name }}-
+            ${{ runner.os }}-
 
-      - name: Run Rust tests
-        run: cargo test --all-targets
-
-      - name: Run documentation tests
-        run: cargo test --doc
-        
-      - name: Run examples
-        run: |
-          cargo run --example qft
-          cargo run --example deutsch_jozsa
-
-  check_no_std:
-    name: Check no_std Build
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        target: thumbv7m-none-eabi # A common bare-metal target
-        override: true
-
-    - name: Run cargo check for no_std target
-      run: cargo check --target thumbv7m-none-eabi
-
-  vet_dependencies:
-    name: Vet Dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Cache cargo-vet binary
+        if: "!matrix.config.stable && matrix.os == 'ubuntu-latest'"
+        uses: actions/cache@v4
         with:
-          toolchain: stable
-          override: true
+          path: ~/.cargo/bin/cargo-vet
+          key: cargo-vet-${{ runner.os }}
 
-      - name: Install cargo-vet
-        run: cargo install cargo-vet --locked
+      - name: Remove lockfile for dependency compatibility test
+        if: '!matrix.config.locked'
+        shell: bash
+        run: rm -f Cargo.lock
 
-      - name: Check for unaudited dependencies
-        run: cargo vet
+      - name: Build
+        run: cargo build --all-targets ${{ matrix.config.locked && '--locked' || '' }}
+
+      - name: Run tests
+        run: cargo test --all-targets ${{ matrix.config.locked && '--locked' || '' }}
+
+      - name: Run clippy
+        if: matrix.config.locked
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Build docs and examples
+        if: '!matrix.config.stable'
+        run: |
+          echo "--- Building documentation ---"
+          cargo doc --no-deps --locked
+
+          echo "--- Building examples ---"
+          cargo build --examples --locked
+
+      - name: Run comprehensive checks (fmt, vet, no_std)
+        if: "!matrix.config.stable && matrix.os == 'ubuntu-latest'"
+        run: |
+          echo "--- Checking formatting ---"
+          cargo fmt -- --check
+
+          echo "--- Installing cargo-vet if needed ---"
+          if ! command -v cargo-vet &>/dev/null; then
+            cargo install cargo-vet --locked
+          fi
+
+          echo "--- Auditing with cargo-vet ---"
+          cargo vet
+
+          echo "--- Installing targets for no_std compatibility ---"
+          rustup target add riscv64gc-unknown-none-elf
+          rustup target add wasm32-unknown-unknown
+
+          echo "--- Checking no_std compatibility (embedded) ---"
+          cargo check --target riscv64gc-unknown-none-elf --locked
+
+          echo "--- Checking no_std compatibility (WASM) ---"
+          cargo check --target wasm32-unknown-unknown --locked

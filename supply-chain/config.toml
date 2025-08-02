@@ -2,10 +2,17 @@
 # cargo-vet config file
 
 [cargo-vet]
-version = "0.9"
+version = "0.10"
 
 [imports.google]
 url = "https://raw.githubusercontent.com/google/supply-chain/main/audits.toml"
 
 [imports.mozilla]
 url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
+
+[policy.qvass]
+audit-as-crates-io = true
+
+[[exemptions.qvass]]
+version = "0.1.0"
+criteria = "safe-to-deploy"

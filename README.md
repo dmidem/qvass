@@ -15,8 +15,8 @@
 [crates]: https://crates.io/crates/qvass
 [docs-badge]: https://docs.rs/qvass/badge.svg
 [docs]: https://docs.rs/qvass
-[actions-badge]: https://github.com/dmidem/qvass/workflows/CI/badge.svg
-[actions]: https://github.com/dmidem/qvass/actions/workflows/ci.yml=branch%3Amain
+[actions-badge]: https://github.com/dmidem/qvass/actions/workflows/ci.yml/badge.svg
+[actions]: https://github.com/dmidem/qvass/actions/workflows/ci.yml
 [msrv-badge]: https://img.shields.io/crates/msrv/qvass.svg
 [msrv]: https://github.com/dmidem/qvass/Cargo.toml
 [release-badge]: https://img.shields.io/github/v/release/dmidem/qvass.svg
