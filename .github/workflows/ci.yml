@@ -78,7 +78,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.config.name }}-
             ${{ runner.os }}-
-          save-always: true
 
       - name: Cache cargo-vet binary
         if: "!matrix.config.stable && matrix.os == 'ubuntu-latest'"
