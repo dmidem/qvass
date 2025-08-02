@@ -125,8 +125,12 @@ jobs:
           echo "--- Auditing with cargo-vet ---"
           cargo vet
 
-          echo "--- Installing riscv64gc target ---"
+          echo "--- Installing targets for no_std compatibility ---"
           rustup target add riscv64gc-unknown-none-elf
+          rustup target add wasm32-unknown-unknown
 
-          echo "--- Checking no_std compatibility ---"
+          echo "--- Checking no_std compatibility (embedded) ---"
           cargo check --target riscv64gc-unknown-none-elf --locked
+
+          echo "--- Checking no_std compatibility (WASM) ---"
+          cargo check --target wasm32-unknown-unknown --locked
