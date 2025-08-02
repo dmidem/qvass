@@ -80,15 +80,12 @@ jobs:
             ${{ runner.os }}-
           save-always: true
 
-      - name: Cache Rust toolchain and targets
+      - name: Cache cargo-vet binary
         if: "!matrix.config.stable && matrix.os == 'ubuntu-latest'"
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cargo/bin/cargo-vet
-            ~/.rustup/toolchains/*/lib/rustlib/riscv64gc-unknown-none-elf/
-          key: rust-tools-${{ runner.os }}-${{ hashFiles('**/rust-toolchain.toml') }}
-          restore-keys: rust-tools-${{ runner.os }}-
+          path: ~/.cargo/bin/cargo-vet
+          key: cargo-vet-${{ runner.os }}
 
       - name: Remove lockfile for dependency compatibility test
         if: '!matrix.config.locked'
@@ -128,10 +125,8 @@ jobs:
           echo "--- Auditing with cargo-vet ---"
           cargo vet
 
-          echo "--- Installing riscv64gc target if needed ---"
-          if ! rustup target list --installed | grep -q riscv64gc-unknown-none-elf; then
-            rustup target add riscv64gc-unknown-none-elf
-          fi
+          echo "--- Installing riscv64gc target ---"
+          rustup target add riscv64gc-unknown-none-elf
 
           echo "--- Checking no_std compatibility ---"
           cargo check --target riscv64gc-unknown-none-elf --locked
